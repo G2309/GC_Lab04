@@ -2,7 +2,7 @@ mod framebuffer;
 mod texture;
 mod color;
 mod obj;
-mod vertrex;
+mod vertex;
 
 use framebuffer::FrameBuffer;
 
