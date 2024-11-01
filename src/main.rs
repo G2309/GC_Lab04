@@ -4,13 +4,14 @@ mod color;
 mod obj;
 mod vertex;
 
-use nalgebra_glm::{Mat4, Vec2, Vec3};
+use nalgebra_glm::{Mat4, Vec3};
 use minifb::{Key, Window, WindowOptions};
-use vertex::{Vertex, Uniforms, render_pipeline};
+use vertex::{Uniforms, render_pipeline};
+use obj::load_obj;
 
 fn main() {
-    let width = 800;
-    let height = 600;
+    let width = 1000;
+    let height = 800;
     let mut window = Window::new("3D Renderer", width, height, WindowOptions::default()).unwrap();
     
     let mut buffer: Vec<u32> = vec![0; width * height];
@@ -23,8 +24,7 @@ fn main() {
         camera_position: Vec3::new(0.0, 0.0, 5.0),
     };
 
-    let vertices: Vec<Vertex> = vec![];
-    let indices: Vec<u32> = vec![];
+    let (vertices, indices) = load_obj("src/3D/spike.obj");
 
     let fragments = render_pipeline(vertices, indices, &uniforms);
 
@@ -39,6 +39,7 @@ fn main() {
         }
     }
 
+    // Actualizar ventana
     while window.is_open() && !window.is_key_down(Key::Escape) {
         window.update_with_buffer(&buffer, width, height).unwrap();
     }
