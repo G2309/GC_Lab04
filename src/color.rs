@@ -50,5 +50,9 @@ impl Color {
     pub fn to_u32(&self) -> u32 {
         ((self.r as u32) << 16) | ((self.g as u32) << 8) | (self.b as u32)
     }
+    
+    pub fn to_rgb(&self) -> (u8, u8, u8) {
+        (self.r, self.g, self.b)
+    }
 }
 

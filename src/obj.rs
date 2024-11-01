@@ -1,12 +1,52 @@
 use tobj;
 use nalgebra_glm::{Vec2, Vec3};
 use crate::vertex::Vertex;
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::path::Path;
 
 pub struct Obj {
     vertices: Vec<Vec3>,
     normals: Vec<Vec3>,
     texcoords: Vec<Vec2>,
     indices: Vec<u32>,
+}
+
+pub fn load_obj(filename: &str) -> (Vec<Vertex>, Vec<u32>) {
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+    let mut positions = Vec::new();
+
+    if let Ok(file) = File::open(filename) {
+        for line in io::BufReader::new(file).lines().flatten() {
+            if line.starts_with("v ") {
+                // Parse vertex positions
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                let x: f32 = parts[1].parse().unwrap();
+                let y: f32 = parts[2].parse().unwrap();
+                let z: f32 = parts[3].parse().unwrap();
+                positions.push(Vec3::new(x, y, z));
+            } else if line.starts_with("f ") {
+                // Parse face indices
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                for i in 1..=3 {
+                    let index: u32 = parts[i].split('/').next().unwrap().parse().unwrap();
+                    indices.push(index - 1); // OBJ indices start from 1
+                }
+            }
+        }
+    }
+
+    // Convert positions to Vertex structs
+    for pos in positions {
+        vertices.push(Vertex {
+            position: pos,
+            normal: Vec3::zeros(),
+            texcoord: Vec2::zeros(),
+        });
+    }
+
+    (vertices, indices)
 }
 
 impl Obj {
