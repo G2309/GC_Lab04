@@ -1,58 +1,71 @@
-#[derive(Debug, Clone, Copy)]
+use std::ops::Add;
+use std::ops::Mul;
+use std::fmt;
+
+#[derive (Debug, Copy, Clone, PartialEq)]
 pub struct Color {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8
+    r: u8,
+    g: u8,
+    b: u8,
 }
 
 impl Color {
-    // Constructor que recibe valores RGB
-    pub fn new(r: u8, g: u8, b: u8) -> Self {
-        Self { r, g, b }
+    pub fn new(r: u8, g: u8, b: u8) -> Color {
+        Color { r, g, b }
     }
 
-    // Constructor que recibe un valor hexadecimal
-    pub fn from_hex(hex: u32) -> Self {
+    pub fn from_hex(hex: u32) -> Color {
         let r = ((hex >> 16) & 0xFF) as u8;
         let g = ((hex >> 8) & 0xFF) as u8;
-        let b = (hex & 0xFF) as u8;
-        Self { r, g, b }
+        let b = (hex & 0xFF) as u8; // fixed this line
+        Color { r, g, b }
     }
 
-    // Método que retorna el valor hexadecimal del color
     pub fn to_hex(&self) -> u32 {
         ((self.r as u32) << 16) | ((self.g as u32) << 8) | (self.b as u32)
     }
 
-    // Método que permite sumar dos colores
-    pub fn add(&self, other: &Color) -> Self {
-        Self {
-            r: self.r.saturating_add(other.r),
-            g: self.g.saturating_add(other.g),
-            b: self.b.saturating_add(other.b),
-        }
-    }
-
-    // Método que permite multiplicar un color por una constante
-    pub fn multiply(&self, factor: f32) -> Self {
-        Self {
-            r: ((self.r as f32 * factor).clamp(0.0, 255.0)) as u8,
-            g: ((self.g as f32 * factor).clamp(0.0, 255.0)) as u8,
-            b: ((self.b as f32 * factor).clamp(0.0, 255.0)) as u8,
-        }
-    }
-
-    // Método para imprimir el color
-    pub fn print(&self) {
-        println!("Color (r: {}, g: {}, b: {})", self.r, self.g, self.b);
-    }
-
-    pub fn to_u32(&self) -> u32 {
-        ((self.r as u32) << 16) | ((self.g as u32) << 8) | (self.b as u32)
+    pub fn black() -> Color {
+        Color {r: 0, g: 0, b: 0}
     }
     
-    pub fn to_rgb(&self) -> (u8, u8, u8) {
-        (self.r, self.g, self.b)
+    // Linear interpolation for Color
+    pub fn lerp(&self, other: &Color, t: f32) -> Color {
+        let r = self.r as f32 + (other.r as f32 - self.r as f32) * t;
+        let g = self.g as f32 + (other.g as f32 - self.g as f32) * t;
+        let b = self.b as f32 + (other.b as f32 - self.b as f32) * t;
+        Color {
+            r: r.clamp(0.0, 255.0) as u8,
+            g: g.clamp(0.0, 255.0) as u8,
+            b: b.clamp(0.0, 255.0) as u8,
+        }
     }
 }
 
+impl Add for Color {
+    type Output = Color;
+
+    fn add(self, other: Color) -> Color {
+        let r = self.r.saturating_add(other.r);
+        let g = self.g.saturating_add(other.g);
+        let b = self.b.saturating_add(other.b);
+        Color { r, g, b }
+    }
+}
+
+impl Mul<f32> for Color {
+    type Output = Color;
+    
+    fn mul(self, factor: f32) -> Color{
+        let r = (self.r as f32 * factor).clamp(0.0, 255.0) as u8;
+        let g = (self.g as f32 * factor).clamp(0.0, 255.0) as u8;
+        let b = (self.b as f32 * factor).clamp(0.0, 255.0) as u8;
+        Color { r, g, b }
+    }
+}
+
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Color(r: {}, g: {}, b: {})", self.r, self.g, self.b)
+    }
+}

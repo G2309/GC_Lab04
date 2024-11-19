@@ -1,47 +1,114 @@
-mod framebuffer;
-mod texture;
+mod pov;
 mod color;
+mod fragment;
+mod framebuffer;
+mod line;
 mod obj;
+mod render;
+mod shader;
 mod vertex;
 
-use nalgebra_glm::{Mat4, Vec3};
-use minifb::{Key, Window, WindowOptions};
-use vertex::{Uniforms, render_pipeline};
-use obj::load_obj;
+use crate::pov::POV;
+use crate::obj::Obj;
+use minifb::{Window, WindowOptions, Key};
+use nalgebra_glm::Vec3;
 
-fn main() {
-    let width = 1000;
-    let height = 800;
-    let mut window = Window::new("3D Renderer", width, height, WindowOptions::default()).unwrap();
+use std::time::Duration;
+use std::f32::consts::PI;
+
+use crate::framebuffer::Framebuffer;
+use crate::render::{create_model_matrix, create_perspective_matrix, create_view_matrix, create_viewport_matrix, render, Uniforms};
+use crate::color::Color;
+
+
+pub fn start() {
+    let window_width = 800;
+    let window_height = 600;
+    let framebuffer_width =  window_width;
+    let framebuffer_height = window_height;
     
-    let mut buffer: Vec<u32> = vec![0; width * height];
+    let frame_delay = Duration::from_millis(16);
+  
+    let mut framebuffer = Framebuffer::new(window_width, window_height, Color::new(0, 0, 0));
+    let mut window = Window::new(
+      "Spike Starship - Gustavo 22779",
+      window_width,
+      window_height,
+      WindowOptions::default()
+    ).unwrap();
 
-    let uniforms = Uniforms {
-        model_matrix: Mat4::identity(),
-        view_matrix: Mat4::identity(),
-        projection_matrix: Mat4::identity(),
-        light_position: Vec3::new(0.0, 0.0, -1.0),
-        camera_position: Vec3::new(0.0, 0.0, 5.0),
-    };
+    let mut pov = POV::new(
+        Vec3::new(0.0, 0.0, 30.0), 
+        Vec3::new(10.0, 10.0, 0.0), 
+        Vec3::new(0.0, 1.0, 0.0)
+    );
+    
+    framebuffer.set_background_color(Color::new(130, 40, 120));
+    
+    let translation = Vec3::new(0.0, 0.0, 0.0);
+    let rotation = Vec3::new(0.0, 0.0, 0.0);
+    let scale = 1.0f32;
+    
+    let obj = Obj::load_custom_obj("src/3D/spike.obj").expect("Failed to load obj");
+    let vertex_array = obj.get_vertex_array();
 
-    let (vertices, indices) = load_obj("src/3D/spike.obj");
-
-    let fragments = render_pipeline(vertices, indices, &uniforms);
-
-    for fragment in fragments {
-        let x = fragment.position.x as usize;
-        let y = fragment.position.y as usize;
-
-        if x < width && y < height {
-            buffer[y * width + x] = ((fragment.color.0 as u32) << 16)
-                                  | ((fragment.color.1 as u32) << 8)
-                                  | (fragment.color.2 as u32);
+    let model_matrix = create_model_matrix(translation, scale, rotation);
+    let mut view_matrix = create_view_matrix(pov.eye, pov.center, pov.up);
+    let perspective_matrix = create_perspective_matrix(window_width as f32, window_height as f32);
+    let viewport_matrix = create_viewport_matrix(framebuffer_width as f32, framebuffer_height as f32);
+    
+    // RENDER LOOP
+    while window.is_open() {
+        if window.is_key_down(Key::Escape) {
+            break;
         }
-    }
 
-    // Actualizar ventana
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        window.update_with_buffer(&buffer, width, height).unwrap();
+        handle_input(&window, &mut pov);
+        if pov.check_if_changed(){
+            view_matrix = create_view_matrix(pov.eye, pov.center,pov.up);
+        }
+        let uniforms = Uniforms{ model_matrix , view_matrix, perspective_matrix, viewport_matrix};
+
+        framebuffer.set_current_color_hex(0xFFFFFF);
+        framebuffer.clear();
+        render(&mut framebuffer, &uniforms, &vertex_array);
+
+        window
+         .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
+         .unwrap();
+
+        std::thread::sleep(frame_delay)
     }
 }
 
+fn handle_input(window: &Window, pov: &mut POV) {
+
+    const ROTATION_SPEED : f32 = PI /20.0;
+    const ZOOM_SPEED : f32 = 1.0;
+
+    if window.is_key_down(Key::Right) {
+        pov.orbit(ROTATION_SPEED, 0.0);
+    }
+    if window.is_key_down(Key::Left) {
+        pov.orbit(-ROTATION_SPEED, 0.0);
+    }
+    if window.is_key_down(Key::Down) {
+        pov.orbit(0.0, -ROTATION_SPEED);
+    }
+    if window.is_key_down(Key::Up) {
+        pov.orbit(0.0, ROTATION_SPEED);
+    }
+
+    // pov zoom
+    if window.is_key_down(Key::W) {
+        pov.zoom(ZOOM_SPEED);
+    }
+    if window.is_key_down(Key::S) {
+        pov.zoom(-ZOOM_SPEED);
+    }
+    
+}
+
+fn main() {
+    start();
+}
