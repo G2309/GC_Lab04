@@ -31,25 +31,25 @@ pub fn start() {
   
     let mut framebuffer = Framebuffer::new(window_width, window_height, Color::new(0, 0, 0));
     let mut window = Window::new(
-      "Spike Starship - Gustavo 22779",
+      "Planet - Gustavo 22779",
       window_width,
       window_height,
       WindowOptions::default()
     ).unwrap();
 
     let mut pov = POV::new(
-        Vec3::new(0.0, 0.0, 30.0), 
         Vec3::new(10.0, 10.0, 0.0), 
+        Vec3::new(0.0, 0.0, 0.0), 
         Vec3::new(0.0, 1.0, 0.0)
     );
     
-    framebuffer.set_background_color(Color::new(130, 40, 120));
+    framebuffer.set_background_color(Color::new(0, 0, 0));
     
     let translation = Vec3::new(0.0, 0.0, 0.0);
     let rotation = Vec3::new(0.0, 0.0, 0.0);
-    let scale = 1.0f32;
+    let scale = 2.0 as f32;
     
-    let obj = Obj::load_custom_obj("src/3D/spike.obj").expect("Failed to load obj");
+    let obj = Obj::load_custom_obj("src/3D/sphere.obj").expect("Failed to load obj");
     let vertex_array = obj.get_vertex_array();
 
     let model_matrix = create_model_matrix(translation, scale, rotation);
@@ -84,7 +84,7 @@ pub fn start() {
 fn handle_input(window: &Window, pov: &mut POV) {
 
     const ROTATION_SPEED : f32 = PI /20.0;
-    const ZOOM_SPEED : f32 = 1.0;
+    const ZOOM_SPEED : f32 = 0.75;
 
     if window.is_key_down(Key::Right) {
         pov.orbit(ROTATION_SPEED, 0.0);
