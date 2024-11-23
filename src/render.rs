@@ -44,6 +44,51 @@ pub fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: 
     }
 }
 
+pub fn render_with_shader<F>(
+    framebuffer: &mut Framebuffer,
+    uniforms: &Uniforms,
+    vertex_array: &[Vertex],
+    shader_fn: F,
+) where
+    F: Fn(&Vertex, &Uniforms, f32) -> Vertex,
+{
+    let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
+    let time = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs_f32())
+        % 100.0; 
+
+    for vertex in vertex_array {
+        let transformed = shader_fn(vertex, uniforms, time);
+        transformed_vertices.push(transformed);
+    }
+    let mut triangles = Vec::new();
+    for i in (0..transformed_vertices.len()).step_by(3) {
+        if i + 2 < transformed_vertices.len() {
+            triangles.push([
+                transformed_vertices[i].clone(),
+                transformed_vertices[i + 1].clone(),
+                transformed_vertices[i + 2].clone(),
+            ]);
+        }
+    }
+    let mut fragments = Vec::new();
+    for tri in &triangles {
+        fragments.extend(triangle_flat_shade(&tri[0], &tri[1], &tri[2]));
+    }
+    for fragment in fragments {
+        let x = fragment.position.x as usize;
+        let y = fragment.position.y as usize;
+        if x < framebuffer.width && y < framebuffer.height {
+            let color = fragment.color;
+            framebuffer.set_current_color(color);
+            framebuffer.draw_point(x, y, fragment.depth);
+        }
+    }
+}
+
+
 pub fn create_model_matrix(translation: Vec3, scale: f32, rotation: Vec3) -> Mat4 {
     let (sin_x, cos_x) = rotation.x.sin_cos();
     let (sin_y, cos_y) = rotation.y.sin_cos();

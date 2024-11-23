@@ -12,14 +12,12 @@ use crate::pov::POV;
 use crate::obj::Obj;
 use minifb::{Window, WindowOptions, Key};
 use nalgebra_glm::Vec3;
-
 use std::time::Duration;
 use std::f32::consts::PI;
-
 use crate::framebuffer::Framebuffer;
-use crate::render::{create_model_matrix, create_perspective_matrix, create_view_matrix, create_viewport_matrix, render, Uniforms};
+use crate::render::{create_model_matrix, create_perspective_matrix, create_view_matrix, create_viewport_matrix, render,render_with_shader, Uniforms};
 use crate::color::Color;
-
+use crate::shader::{sun_shader};
 
 pub fn start() {
     let window_width = 800;
@@ -28,7 +26,6 @@ pub fn start() {
     let framebuffer_height = window_height;
     
     let frame_delay = Duration::from_millis(16);
-  
     let mut framebuffer = Framebuffer::new(window_width, window_height, Color::new(0, 0, 0));
     let mut window = Window::new(
       "Planet - Gustavo 22779",
@@ -38,7 +35,7 @@ pub fn start() {
     ).unwrap();
 
     let mut pov = POV::new(
-        Vec3::new(10.0, 10.0, 0.0), 
+        Vec3::new(5.0, 5.0, 0.0), 
         Vec3::new(0.0, 0.0, 0.0), 
         Vec3::new(0.0, 1.0, 0.0)
     );
@@ -56,6 +53,7 @@ pub fn start() {
     let mut view_matrix = create_view_matrix(pov.eye, pov.center, pov.up);
     let perspective_matrix = create_perspective_matrix(window_width as f32, window_height as f32);
     let viewport_matrix = create_viewport_matrix(framebuffer_width as f32, framebuffer_height as f32);
+
     
     // RENDER LOOP
     while window.is_open() {
@@ -64,20 +62,24 @@ pub fn start() {
         }
 
         handle_input(&window, &mut pov);
-        if pov.check_if_changed(){
-            view_matrix = create_view_matrix(pov.eye, pov.center,pov.up);
+        if pov.check_if_changed() {
+            view_matrix = create_view_matrix(pov.eye, pov.center, pov.up);
         }
-        let uniforms = Uniforms{ model_matrix , view_matrix, perspective_matrix, viewport_matrix};
+        let uniforms = Uniforms {
+            model_matrix,
+            view_matrix,
+            perspective_matrix,
+            viewport_matrix,
+        };
 
         framebuffer.set_current_color_hex(0xFFFFFF);
         framebuffer.clear();
-        render(&mut framebuffer, &uniforms, &vertex_array);
-
+        render_with_shader(&mut framebuffer, &uniforms, &vertex_array, sun_shader);
         window
-         .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
-         .unwrap();
+            .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
+            .unwrap();
 
-        std::thread::sleep(frame_delay)
+        std::thread::sleep(frame_delay);
     }
 }
 
