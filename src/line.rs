@@ -2,6 +2,8 @@ use nalgebra_glm::{dot, Vec2, Vec3};
 use crate::color::Color;
 use crate::fragment::Fragment;
 use crate::vertex::Vertex;
+use crate::shader::fragment_shader;
+use crate::render::Uniforms;
 
 pub fn line(v1: &Vertex, v2: &Vertex) -> Vec<Fragment> {
     let mut fragments = Vec::new();
@@ -56,7 +58,7 @@ pub fn triangle_wireframe(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragment
     fragments
 }
 
-pub fn triangle_flat_shade(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragment> {
+pub fn triangle_flat_shade(v1: &Vertex, v2: &Vertex, v3: &Vertex, uniforms: &Uniforms, time: u32) -> Vec<Fragment> {
     let mut fragments = Vec::new();
 
     let (a, b, c) = (
@@ -64,8 +66,6 @@ pub fn triangle_flat_shade(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragmen
         v2.transformed_position,
         v3.transformed_position,
     );
-
-    let light_dir = Vec3::new(0.0, 1.0, -1.0);
 
     let (min_x, min_y, max_x, max_y) = calculate_bounding_box(&a, &b, &c);
     let triangle_area = edge_function(&a, &b, &c);
@@ -76,25 +76,42 @@ pub fn triangle_flat_shade(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragmen
             let (w1, w2, w3) = barycentric_coordinates(&point, &a, &b, &c, triangle_area);
 
             if w1 >= 0.0 && w2 >= 0.0 && w3 >= 0.0 {
+                // Interpolación de la normal
                 let normal = (v1.transformed_normal * w1
                     + v2.transformed_normal * w2
                     + v3.transformed_normal * w3)
                     .normalize();
-                let intensity = dot(&normal, &light_dir).max(0.0);
-                let base_color = Color::new(255, 255, 255);
-                let lit_color = base_color * intensity;
 
+                // Interpolación de la profundidad
                 let depth = a.z * w1 + b.z * w2 + c.z * w3;
 
+                // Interpolación de las coordenadas de textura
                 let tex_coords = v1.tex_coords * w1 + v2.tex_coords * w2 + v3.tex_coords * w3;
 
-                fragments.push(Fragment::new(
+                // Interpolación de la posición original del vértice
+                let vertex_position = v1.position * w1 + v2.position * w2 + v3.position * w3;
+
+                // Crear el fragmento temporal
+                let fragment = Fragment::new(
                     Vec2::new(point.x, point.y),
-                    lit_color,
+                    Color::new(0, 0, 0), // Se sobrescribirá por el shader
                     depth,
                     normal,
-                    intensity,
-                    point,
+                    0.0,
+                    vertex_position,
+                    Some(tex_coords),
+                );
+
+                let (color, _emit) = fragment_shader(&fragment, uniforms, time);
+
+                // Crear el fragmento final con el color calculado por el shader
+                fragments.push(Fragment::new(
+                    Vec2::new(point.x, point.y),
+                    color, // Color dinámico del shader
+                    depth,
+                    normal,
+                    0.0,
+                    vertex_position,
                     Some(tex_coords),
                 ));
             }
@@ -103,6 +120,7 @@ pub fn triangle_flat_shade(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragmen
 
     fragments
 }
+
 
 fn calculate_bounding_box(v1: &Vec3, v2: &Vec3, v3: &Vec3) -> (i32, i32, i32, i32) {
     let min_x = v1.x.min(v2.x).min(v3.x).floor() as i32;

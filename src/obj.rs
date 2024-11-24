@@ -1,6 +1,5 @@
 use tobj;
 use nalgebra_glm::{Vec2, Vec3};
-use crate::color::Color;
 use crate::vertex::Vertex;
 
 pub struct Obj {
