@@ -18,10 +18,11 @@ use std::f32::consts::PI;
 use crate::framebuffer::Framebuffer;
 use crate::render::{create_model_matrix, create_perspective_matrix, create_view_matrix, create_viewport_matrix, render, Uniforms, gaussian_blur, apply_bloom};
 use fastnoise_lite::FastNoiseLite;
+use crate::noise::{create_noise, create_cloud_noise};
 
 pub fn start() {
-    let window_width = 800;
-    let window_height = 800;
+    let window_width = 600;
+    let window_height = 600;
     let framebuffer_width = window_width;
     let framebuffer_height = window_height;
 
@@ -45,13 +46,18 @@ pub fn start() {
 
     let translation = Vec3::new(0.0, 0.0, 0.0);
     let rotation = Vec3::new(0.0, 0.0, 0.0);
-    let scale = 2.0f32;
+    let scale =1.0f32;
 
     let obj = Obj::load_custom_obj("src/3D/sphere.obj").expect("Failed to load obj");
     let vertex_array = obj.get_vertex_array();
 
     let mut time = 0;
-    let mut current_shader = 0;
+    let mut current_shader = 1;
+    let mut current_noise = (
+        create_noise(1),
+        create_noise(6),
+        create_noise(7),
+    );
 
     let model_matrix = create_model_matrix(translation, scale, rotation);
     let mut view_matrix = create_view_matrix(pov.eye, pov.center, pov.up);
@@ -67,9 +73,9 @@ pub fn start() {
         let keys = window.get_keys_pressed(minifb::KeyRepeat::No);
         for key in keys {
             match key {
-                Key::Key1 => current_shader = 1,
-                Key::Key6 => current_shader = 6,
-                Key::Key7 => current_shader = 7,
+                Key::Key1 => {current_shader = 1; current_noise.0 = create_noise(8)},
+                Key::Key6 => {current_shader = 6; current_noise.1 = create_noise(6)},
+                Key::Key7 => {current_shader = 7; current_noise.2 = create_noise(9)},
                 _ => {}
             }
         }
@@ -87,8 +93,8 @@ pub fn start() {
             projection_matrix,
             viewport_matrix,
             time,
-            noise: FastNoiseLite::new(),
-            cloud_noise: FastNoiseLite::new(),
+            noise: create_noise(1),
+            cloud_noise: create_cloud_noise(),
             band_noise: FastNoiseLite::new(),
             current_shader,
         };
@@ -103,6 +109,14 @@ pub fn start() {
                 0.0,
                 3.0 * moon_angle.sin(),
             );
+            let moon_angle_2 = time as f32 * 0.015;
+            let moon_translation_2 = Vec3::new(
+                5.0 * moon_angle_2.cos(),
+                3.0,
+                5.0 * moon_angle_2.sin(),
+            );
+            uniforms.model_matrix = create_model_matrix(moon_translation_2, 0.3, Vec3::new(0.0, 0.0, 0.0)); // Tamaño diferente
+            render(&mut framebuffer, &uniforms, &vertex_array, time);
             uniforms.model_matrix = create_model_matrix(moon_translation, 0.5, Vec3::new(0.0, 0.0, 0.0));
             render(&mut framebuffer, &uniforms, &vertex_array, time);
         } else if current_shader == 6 {
