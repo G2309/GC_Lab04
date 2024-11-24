@@ -42,7 +42,7 @@ pub fn start() {
         Vec3::new(0.0, 1.0, 0.0),
     );
 
-    framebuffer.set_background_color(32);
+    framebuffer.set_background_color(120);
 
     let translation = Vec3::new(0.0, 0.0, 0.0);
     let rotation = Vec3::new(0.0, 0.0, 0.0);
@@ -55,6 +55,7 @@ pub fn start() {
     let mut current_shader = 1;
     let mut current_noise = (
         create_noise(1),
+        create_noise(2),
         create_noise(6),
         create_noise(7),
     );
@@ -115,7 +116,8 @@ pub fn start() {
                 3.0,
                 5.0 * moon_angle_2.sin(),
             );
-            uniforms.model_matrix = create_model_matrix(moon_translation_2, 0.3, Vec3::new(0.0, 0.0, 0.0)); // Tamaño diferente
+            uniforms.current_shader = 2;
+            uniforms.model_matrix = create_model_matrix(moon_translation_2, 0.3, Vec3::new(0.0, 0.0, 0.0)); 
             render(&mut framebuffer, &uniforms, &vertex_array, time);
             uniforms.model_matrix = create_model_matrix(moon_translation, 0.5, Vec3::new(0.0, 0.0, 0.0));
             render(&mut framebuffer, &uniforms, &vertex_array, time);
@@ -133,8 +135,7 @@ pub fn start() {
             apply_bloom(&mut framebuffer.buffer, &framebuffer.emissive_buffer, framebuffer.width, framebuffer.height);
         }
 
-        // Incrementar tiempo
-        time += 2;
+        time += 1;
 
         window
             .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
