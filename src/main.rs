@@ -129,12 +129,12 @@ pub fn start() {
             uniforms.current_shader = 7;
             uniforms.model_matrix = create_model_matrix(translation, scale, rotation);
             render(&mut framebuffer, &uniforms, &vertex_array, time);
-            gaussian_blur(&mut framebuffer.emissive_buffer, framebuffer.width, framebuffer.height, 20, 2.5);
+            gaussian_blur(&mut framebuffer.emissive_buffer, framebuffer.width, framebuffer.height, 30, 4.5);
             apply_bloom(&mut framebuffer.buffer, &framebuffer.emissive_buffer, framebuffer.width, framebuffer.height);
         }
 
         // Incrementar tiempo
-        time += 1;
+        time += 2;
 
         window
             .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)

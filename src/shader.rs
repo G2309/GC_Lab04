@@ -89,7 +89,7 @@ fn kenshi_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (Color,
   let land_color_3 = Color::from_float(0.4, 0.3, 0.1);
   let cloud_color = Color::from_float(0.9, 0.9, 0.9); 
 
-  let land_threshold = 0.2; 
+  let land_threshold = 0.3; 
 
   let base_color = if base_noise_value > land_threshold {
     let land_intensity = (base_noise_value - land_threshold) / (1.0 - land_threshold);
@@ -109,8 +109,8 @@ fn kenshi_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (Color,
 
   let lit_color = base_color * (0.1 + 0.9 * diffuse); 
 
-  let cloud_threshold = 0.065; 
-  let cloud_opacity = 0.25 + 0.2 * ((time as f32 / 1000.0) * 0.3).sin().abs(); 
+  let cloud_threshold = 0.2; 
+  let cloud_opacity = 0.3 + 0.2 * ((time as f32 / 1000.0) * 0.3).sin().abs(); 
   if cloud_noise_value > cloud_threshold {
       let cloud_intensity = ((cloud_noise_value - cloud_threshold) / (1.0 - cloud_threshold)).clamp(0.0, 1.0);
       (lit_color.blend_add(&(cloud_color * (cloud_intensity * cloud_opacity))), 0)

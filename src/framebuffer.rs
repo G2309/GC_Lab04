@@ -50,6 +50,17 @@ impl Framebuffer {
     pub fn set_current_color(&mut self, color: u32) {
         self.current_color = color;
     }
+    pub fn set_emission(&mut self, emit: u32) {
+        self.emissive_buffer.fill(emit);
+    }
+
+    // Set emission for a specific point in the framebuffer
+    pub fn set_emission_point(&mut self, x: usize, y: usize, emit: u32) {
+        if x < self.width && y < self.height {
+            let index = y * self.width + x;
+            self.emissive_buffer[index] = emit;
+        }
+    }
 }
 
 // Add trait implementation for saving to BMP file

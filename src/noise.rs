@@ -14,7 +14,7 @@ pub fn create_noise(current_shader: u8) -> FastNoiseLite {
     }
 }
 pub fn create_cloud_noise() -> FastNoiseLite {
-    let mut noise = FastNoiseLite::with_seed(1077);  
+    let mut noise = FastNoiseLite::with_seed(805);  
     noise.set_noise_type(Some(NoiseType::Perlin)); 
     noise.set_fractal_type(Some(FractalType::FBm));
     noise.set_fractal_octaves(Some(2)); 
@@ -25,7 +25,7 @@ pub fn create_cloud_noise() -> FastNoiseLite {
 }
 
 fn create_kenshi_noise() -> FastNoiseLite {
-    let mut noise = FastNoiseLite::with_seed(18);
+    let mut noise = FastNoiseLite::with_seed(623);
     noise.set_noise_type(Some(NoiseType::OpenSimplex2S));
     noise.set_fractal_type(Some(FractalType::Ridged));
     noise.set_fractal_octaves(Some(5));

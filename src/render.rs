@@ -5,6 +5,7 @@ use crate::vertex::Vertex;
 use crate::shader::vertex_shader;
 use crate::Framebuffer;
 use crate::line::triangle_flat_shade;
+use crate::color::Color;
 
 pub struct Uniforms {
     pub model_matrix: Mat4,
@@ -52,6 +53,33 @@ pub fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: 
     }
 }
 
+pub fn render_sun(
+    framebuffer: &mut Framebuffer,
+    uniforms: &mut Uniforms,
+    vertex_array: &Vec<Vertex>,
+    sun_position: Vec3,
+    sun_size: f32,
+    time: usize,
+) {
+    // Set dynamic color and emission for the sun
+    let dynamic_emission = 100 + (50.0 * (time as f32 * 0.05).sin()) as u32;
+    let dynamic_color = Color::from_float(
+        1.0,
+        0.9 + 0.1 * (time as f32 * 0.1).cos(),
+        0.5 + 0.2 * (time as f32 * 0.1).sin(),
+    );
+
+    framebuffer.set_emission(dynamic_emission);
+    uniforms.current_shader = 1;
+
+    uniforms.model_matrix = create_model_matrix(sun_position, sun_size, Vec3::new(0.0, 0.0, 0.0));
+    render(framebuffer, uniforms, vertex_array, time as u32);
+}
+
+fn apply_sun_effects(framebuffer: &mut Framebuffer, width: usize, height: usize) {
+    gaussian_blur(&mut framebuffer.emissive_buffer, width, height, 50, 2.0);
+    apply_bloom(&mut framebuffer.buffer, &framebuffer.emissive_buffer, width, height);
+}
 
 // Matrices transformations
 
