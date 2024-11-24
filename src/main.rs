@@ -7,6 +7,7 @@ mod obj;
 mod render;
 mod shader;
 mod vertex;
+mod noise;
 
 use crate::pov::POV;
 use crate::obj::Obj;
@@ -15,9 +16,10 @@ use nalgebra_glm::Vec3;
 use std::time::Duration;
 use std::f32::consts::PI;
 use crate::framebuffer::Framebuffer;
-use crate::render::{create_model_matrix, create_perspective_matrix, create_view_matrix, create_viewport_matrix, render,render_with_shader, Uniforms};
+use crate::render::{create_model_matrix, create_perspective_matrix, create_view_matrix, create_viewport_matrix, render, Uniforms};
 use crate::color::Color;
 use crate::shader::{sun_shader, urano_shader};
+use fastnoise_lite::FastNoiseLite;
 
 pub fn start() {
     let window_width = 800;
@@ -26,7 +28,7 @@ pub fn start() {
     let framebuffer_height = window_height;
     
     let frame_delay = Duration::from_millis(16);
-    let mut framebuffer = Framebuffer::new(window_width, window_height, Color::new(0, 0, 0));
+    let mut framebuffer = Framebuffer::new(window_width, window_height);
     let mut window = Window::new(
       "Planet - Gustavo 22779",
       window_width,
@@ -40,7 +42,7 @@ pub fn start() {
         Vec3::new(0.0, 1.0, 0.0)
     );
     
-    framebuffer.set_background_color(Color::new(0, 0, 0));
+    framebuffer.set_background_color(32);
     
     let translation = Vec3::new(0.0, 0.0, 0.0);
     let rotation = Vec3::new(0.0, 0.0, 0.0);
@@ -51,12 +53,13 @@ pub fn start() {
 
     let model_matrix = create_model_matrix(translation, scale, rotation);
     let mut view_matrix = create_view_matrix(pov.eye, pov.center, pov.up);
-    let perspective_matrix = create_perspective_matrix(window_width as f32, window_height as f32);
+    let projection_matrix = create_perspective_matrix(window_width as f32, window_height as f32);
     let viewport_matrix = create_viewport_matrix(framebuffer_width as f32, framebuffer_height as f32);
 
     
     // RENDER LOOP
     while window.is_open() {
+        let time = 0;
         if window.is_key_down(Key::Escape) {
             break;
         }
@@ -66,15 +69,20 @@ pub fn start() {
             view_matrix = create_view_matrix(pov.eye, pov.center, pov.up);
         }
         let uniforms = Uniforms {
-            model_matrix,
-            view_matrix,
-            perspective_matrix,
-            viewport_matrix,
-        };
+    model_matrix,
+    view_matrix,
+    projection_matrix,
+    viewport_matrix,
+    time: 0, // Tiempo inicial
+    noise: FastNoiseLite::new(),
+    cloud_noise: FastNoiseLite::new(),
+    band_noise: FastNoiseLite::new(),
+    current_shader: 0, // Por ejemplo, 0 para sun_shader
+};
 
-        framebuffer.set_background_color(Color::new(255,255,255));
-        framebuffer.clear();
-        render_with_shader(&mut framebuffer, &uniforms, &vertex_array, urano_shader);
+framebuffer.clear();
+render(&mut framebuffer, &uniforms, &vertex_array, time);
+
         window
             .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
             .unwrap();

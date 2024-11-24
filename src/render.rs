@@ -1,24 +1,30 @@
 use nalgebra_glm::{Vec3, Mat4, look_at, perspective};
-use std::f32::consts::PI;
-
+use std::{f32::consts::PI};
+use fastnoise_lite::FastNoiseLite;
 use crate::vertex::Vertex;
-use crate::framebuffer::Framebuffer;
-use crate::shader::vertex_shader;
-use crate::line::triangle_flat_shade;
+use crate::shader::{fragment_shader,vertex_shader};
+use crate::Framebuffer;
+use crate::line::triangle_wireframe;
 
 pub struct Uniforms {
     pub model_matrix: Mat4,
     pub view_matrix: Mat4,
-    pub perspective_matrix: Mat4,
-    pub viewport_matrix: Mat4
+    pub projection_matrix: Mat4,
+    pub viewport_matrix: Mat4,
+    pub time: u32,
+    pub noise: FastNoiseLite,
+    pub cloud_noise: FastNoiseLite, 
+    pub band_noise: FastNoiseLite, 
+    pub current_shader: u8, 
 }
 
-pub fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Vertex]) {
+pub fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Vertex], time: u32) {
     let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
     for vertex in vertex_array {
         let transformed = vertex_shader(vertex, uniforms);
         transformed_vertices.push(transformed);
     }
+    
     let mut triangles = Vec::new();
     for i in (0..transformed_vertices.len()).step_by(3) {
         if i + 2 < transformed_vertices.len() {
@@ -29,65 +35,26 @@ pub fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: 
             ]);
         }
     }
+
     let mut fragments = Vec::new();
     for tri in &triangles {
-        fragments.extend(triangle_flat_shade(&tri[0], &tri[1], &tri[2]));
+        fragments.extend(triangle_wireframe(&tri[0], &tri[1], &tri[2]));
     }
+
     for fragment in fragments {
         let x = fragment.position.x as usize;
         let y = fragment.position.y as usize;
         if x < framebuffer.width && y < framebuffer.height {
-            let color = fragment.color;
+            // Apply fragment shader
+            let (shaded_color, emission) = fragment_shader(&fragment, &uniforms, time);
+            let color = shaded_color.to_hex();
             framebuffer.set_current_color(color);
-            framebuffer.point(x, y, fragment.depth);
+            framebuffer.point(x, y, fragment.depth, emission); 
         }
     }
 }
 
-pub fn render_with_shader<F>(
-    framebuffer: &mut Framebuffer,
-    uniforms: &Uniforms,
-    vertex_array: &[Vertex],
-    shader_fn: F,
-) where
-    F: Fn(&Vertex, &Uniforms, f32) -> Vertex,
-{
-    let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
-    let time = (std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs_f32())
-        % 100.0; 
-
-    for vertex in vertex_array {
-        let transformed = shader_fn(vertex, uniforms, time);
-        transformed_vertices.push(transformed);
-    }
-    let mut triangles = Vec::new();
-    for i in (0..transformed_vertices.len()).step_by(3) {
-        if i + 2 < transformed_vertices.len() {
-            triangles.push([
-                transformed_vertices[i].clone(),
-                transformed_vertices[i + 1].clone(),
-                transformed_vertices[i + 2].clone(),
-            ]);
-        }
-    }
-    let mut fragments = Vec::new();
-    for tri in &triangles {
-        fragments.extend(triangle_flat_shade(&tri[0], &tri[1], &tri[2]));
-    }
-    for fragment in fragments {
-        let x = fragment.position.x as usize;
-        let y = fragment.position.y as usize;
-        if x < framebuffer.width && y < framebuffer.height {
-            let color = fragment.color;
-            framebuffer.set_current_color(color);
-            framebuffer.point(x, y, fragment.depth);
-        }
-    }
-}
-
+// Matrices transformations
 
 pub fn create_model_matrix(translation: Vec3, scale: f32, rotation: Vec3) -> Mat4 {
     let (sin_x, cos_x) = rotation.x.sin_cos();
@@ -148,3 +115,87 @@ pub fn create_viewport_matrix(width: f32, height: f32) -> Mat4 {
         0.0, 0.0, 0.0, 1.0
     )
 }
+
+// Blur and Bloom effects
+
+fn gaussian_blur(buffer: &mut [u32], width: usize, height: usize, kernel_size: usize, sigma: f32) {
+    let gaussian_kernel = create_gaussian_kernel(kernel_size, sigma);
+    let kernel_sum: f32 = gaussian_kernel.iter().map(|&x| x as f32).sum();
+
+    // Apply horizontally
+    for y in 0..height {
+        let mut temp_row = vec![0u32; width];
+        for x in 0..width {
+            let mut filtered_pixel = 0f32;
+            for k in 0..gaussian_kernel.len() {
+                let sample_x = x as i32 + k as i32 - (gaussian_kernel.len() / 2) as i32;
+                if sample_x >= 0 && sample_x < width as i32 {
+                    filtered_pixel += buffer[sample_x as usize + y * width] as f32 * gaussian_kernel[k] as f32;
+                }
+            }
+            temp_row[x] = (filtered_pixel / kernel_sum).round() as u32;
+        }
+        buffer[y * width..(y + 1) * width].copy_from_slice(&temp_row);
+    }
+
+    // Apply vertically
+    for x in 0..width {
+        let mut temp_col = vec![0u32; height];
+        for y in 0..height {
+            let mut filtered_pixel = 0f32;
+            for k in 0..gaussian_kernel.len() {
+                let sample_y = y as i32 + k as i32 - (gaussian_kernel.len() / 2) as i32;
+                if sample_y >= 0 && sample_y < height as i32 {
+                    filtered_pixel += buffer[x + sample_y as usize * width] as f32 * gaussian_kernel[k] as f32;
+                }
+            }
+            temp_col[y] = (filtered_pixel / kernel_sum).round() as u32;
+        }
+        for y in 0..height {
+            buffer[x + y * width] = temp_col[y];
+        }
+    }
+}
+
+fn create_gaussian_kernel(size: usize, sigma: f32) -> Vec<u32> {
+    let mut kernel = vec![0u32; size];
+    let mean = (size as f32 - 1.0) / 2.0;
+    let coefficient = 1.0 / (2.0 * std::f32::consts::PI * sigma * sigma).sqrt();
+
+    for x in 0..size {
+        let exp_numerator = -((x as f32 - mean) * (x as f32 - mean)) / (2.0 * sigma * sigma);
+        let exp_value = (-exp_numerator).exp();
+        kernel[x] = (coefficient * exp_value * 255.0) as u32;
+    }
+
+    kernel
+}
+
+fn apply_bloom(original: &mut [u32], bloom: &[u32], width: usize, height: usize) {
+    for i in 0..original.len() {
+        let original_color = original[i];
+        let bloom_intensity = bloom[i];
+        if bloom_intensity > 0 {
+            original[i] = blend_bloom(original_color, bloom_intensity);
+        }
+    }
+}
+
+fn blend_bloom(base_color: u32, bloom_intensity: u32) -> u32 {
+    // Bloom blending
+    let bloom_strength = 0.8;
+    let max_bloom_effect = 1.2;
+
+    let r = ((base_color >> 16) & 0xFF) as f32;
+    let g = ((base_color >> 8) & 0xFF) as f32;
+    let b = (base_color & 0xFF) as f32;
+    let bloom = bloom_intensity as f32 * bloom_strength;
+
+    // Calculate the new color intensity with clamping
+    let new_r = ((r + bloom).min(255.0 * max_bloom_effect)).min(255.0) as u32;
+    let new_g = ((g + bloom).min(255.0 * max_bloom_effect)).min(255.0) as u32;
+    let new_b = ((b + bloom).min(255.0 * max_bloom_effect)).min(255.0) as u32;
+
+    (new_r << 16) | (new_g << 8) | new_b
+}
+

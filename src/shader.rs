@@ -11,7 +11,7 @@ pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
         vertex.position.z,
         1.0
     );
-        let transformed = uniforms.viewport_matrix * uniforms.perspective_matrix * uniforms.view_matrix * uniforms.model_matrix * position;
+        let transformed = uniforms.viewport_matrix * uniforms.projection_matrix * uniforms.view_matrix * uniforms.model_matrix * position;
         let w = transformed.w;
     let transformed_position = Vec3::new(
         transformed.x / w,
@@ -28,30 +28,40 @@ pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
     }
 }
 
-pub fn sun_shader(vertex: &Vertex, uniforms: &Uniforms, time: f32) -> Vertex {
-    let mut transformed_vertex = vertex_shader(vertex, uniforms);
-    let mut color = Vec3::new(1.0, 5.0, 1.0);
-    let noise = (time * 5.0 + transformed_vertex.position.x * 10.0).sin() * 0.5 + 0.5;
-    if noise > 0.8 { 
-        color += Vec3::new(1.0, 0.5, 0.1); 
-    }
-    transformed_vertex.color = crate::color::Color::new(
-        (color.x * 255.0).clamp(0.0, 255.0) as u8,
-        (color.y * 255.0).clamp(0.0, 255.0) as u8,
-        (color.z * 255.0).clamp(0.0, 255.0) as u8,
-    );
-    transformed_vertex
+pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (Color, u32) {
+  match uniforms.current_shader {
+      6 => urano_shader(fragment, uniforms, time),
+      7 => sun_shader(),
+      _ => (Color::new(0, 0, 0), 0),
+  }
 }
 
-pub fn urano_shader(vertex: &Vertex, uniforms: &Uniforms, time: f32) -> Vertex {
-    let mut transformed_vertex = vertex_shader(vertex, uniforms);
-    let base_color = Vec3::new(0.2, 0.5, 1.0); // Azul claro
-    let noise = (time * 0.5 + transformed_vertex.position.x * 3.0).sin() * 0.2 + 0.8;  // Añade variación de gas
-    let color_variation = base_color * noise;
-    transformed_vertex.color = Color::new(
-        (color_variation.x * 255.0).clamp(0.0, 255.0) as u8,
-        (color_variation.y * 255.0).clamp(0.0, 255.0) as u8,
-        (color_variation.z * 255.0).clamp(0.0, 255.0) as u8,
-    );
-    transformed_vertex
+pub fn urano_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (Color, u32) {
+  let x = fragment.vertex_position.x;
+  let y = fragment.vertex_position.y;
+  let z = fragment.vertex_position.z;
+  let t = time as f32 * 0.001; 
+
+  let noise_value = uniforms.noise.get_noise_3d(x, y + t, z);
+
+  let base_color = Color::from_float(0.2, 0.5, 0.9);
+
+  let intensity = (noise_value * 0.5 + 0.5).clamp(0.0, 1.0);
+  let varied_color = base_color * intensity;
+
+  let light_dir = Vec3::new(1.0, 1.0, 1.0).normalize();
+  let normal = fragment.normal.normalize(); 
+  let diffuse = normal.dot(&light_dir).max(0.0); 
+  let ambient = 0.3; 
+  let lit_color = varied_color * (ambient + (1.0 - ambient) * diffuse); 
+
+  (lit_color, 0)
 }
+
+pub fn sun_shader() -> (Color, u32) {
+  let base_color = Color::from_float(1.0, 0.9, 0.5);
+  let emission = 100;
+
+  (base_color, emission)
+}
+

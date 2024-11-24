@@ -1,16 +1,82 @@
-use noise::{Perlin, NoiseFn};
+use fastnoise_lite::{FastNoiseLite, NoiseType, FractalType};
 
-#[derive(Clone)]
-pub struct Noise {
-    perlin: Perlin,
-} 
-
-impl Noise {
-    pub fn new(seed: u32) -> Noise {
-        Noise { perlin: Perlin::new(seed) }
-    }
-    
-    pub fn get_noise_3d(&self, x:f32, y:f32, z:f32) -> f32 {
-        self.perlin.get([x as f64, y as f64, z as f64]) as f32
+pub fn create_noise(current_shader: u8) -> FastNoiseLite {
+    match current_shader {
+        1 => create_earth_noise(),
+        2 => create_mars_noise(),
+        3 => create_mercury_noise(),
+        4 => FastNoiseLite::new(),
+        5 => create_jupiter_noise(),
+        6 => create_urano_noise(), 
+        8 => create_moon_noise(),
+        9 => FastNoiseLite::new(),
+        _ => create_earth_noise(),  
     }
 }
+
+fn create_earth_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(1337);
+    noise.set_noise_type(Some(NoiseType::OpenSimplex2S));
+    noise.set_fractal_type(Some(FractalType::Ridged));
+    noise.set_fractal_octaves(Some(5));
+    noise.set_fractal_lacunarity(Some(3.0));
+    noise.set_fractal_gain(Some(0.5));
+    noise.set_frequency(Some(0.5));
+    noise
+}
+
+fn create_mars_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(1234);
+    noise.set_noise_type(Some(NoiseType::Perlin));
+    noise.set_fractal_type(Some(FractalType::Ridged));
+    noise.set_fractal_octaves(Some(4));
+    noise.set_fractal_lacunarity(Some(2.0));
+    noise.set_fractal_gain(Some(0.5));
+    noise.set_frequency(Some(1.5));
+    noise
+}
+
+fn create_moon_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(4321);
+    noise.set_noise_type(Some(NoiseType::OpenSimplex2));
+    noise.set_fractal_type(Some(FractalType::PingPong));
+    noise.set_fractal_octaves(Some(2));
+    noise.set_fractal_lacunarity(Some(2.0));
+    noise.set_fractal_gain(Some(0.5));
+    noise.set_frequency(Some(3.0));
+    noise
+}
+
+fn create_mercury_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(4321);
+    noise.set_noise_type(Some(NoiseType::Perlin));
+    noise.set_fractal_type(Some(FractalType::PingPong));
+    noise.set_fractal_octaves(Some(5));
+    noise.set_fractal_lacunarity(Some(2.0));
+    noise.set_fractal_gain(Some(1.0));
+    noise.set_frequency(Some(5.0));
+    noise
+}
+
+fn create_jupiter_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(5678);
+    noise.set_noise_type(Some(NoiseType::OpenSimplex2));
+    noise.set_fractal_type(Some(FractalType::DomainWarpProgressive));
+    noise.set_fractal_octaves(Some(6));
+    noise.set_fractal_lacunarity(Some(2.0));
+    noise.set_fractal_gain(Some(0.5));
+    noise.set_frequency(Some(2.0));
+    noise
+}
+
+fn create_urano_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(2021);
+    noise.set_noise_type(Some(NoiseType::OpenSimplex2));
+    noise.set_fractal_type(Some(FractalType::Ridged));
+    noise.set_fractal_octaves(Some(4));
+    noise.set_fractal_lacunarity(Some(2.0));
+    noise.set_fractal_gain(Some(0.4));
+    noise.set_frequency(Some(0.2));
+    noise
+}
+
