@@ -42,3 +42,16 @@ pub fn sun_shader(vertex: &Vertex, uniforms: &Uniforms, time: f32) -> Vertex {
     );
     transformed_vertex
 }
+
+pub fn urano_shader(vertex: &Vertex, uniforms: &Uniforms, time: f32) -> Vertex {
+    let mut transformed_vertex = vertex_shader(vertex, uniforms);
+    let base_color = Vec3::new(0.2, 0.5, 1.0); // Azul claro
+    let noise = (time * 0.5 + transformed_vertex.position.x * 3.0).sin() * 0.2 + 0.8;  // Añade variación de gas
+    let color_variation = base_color * noise;
+    transformed_vertex.color = Color::new(
+        (color_variation.x * 255.0).clamp(0.0, 255.0) as u8,
+        (color_variation.y * 255.0).clamp(0.0, 255.0) as u8,
+        (color_variation.z * 255.0).clamp(0.0, 255.0) as u8,
+    );
+    transformed_vertex
+}

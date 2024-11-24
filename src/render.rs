@@ -39,7 +39,7 @@ pub fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: 
         if x < framebuffer.width && y < framebuffer.height {
             let color = fragment.color;
             framebuffer.set_current_color(color);
-            framebuffer.draw_point(x, y, fragment.depth);
+            framebuffer.point(x, y, fragment.depth);
         }
     }
 }
@@ -83,7 +83,7 @@ pub fn render_with_shader<F>(
         if x < framebuffer.width && y < framebuffer.height {
             let color = fragment.color;
             framebuffer.set_current_color(color);
-            framebuffer.draw_point(x, y, fragment.depth);
+            framebuffer.point(x, y, fragment.depth);
         }
     }
 }

@@ -48,7 +48,7 @@ impl Framebuffer {
         }
     }
 
-    pub fn draw_point(&mut self, x: usize, y: usize, depth: f32) {
+    pub fn point(&mut self, x: usize, y: usize, depth: f32) {
         if  0 < x  
             && x < self.width 
             && 0 < y 

@@ -17,11 +17,11 @@ use std::f32::consts::PI;
 use crate::framebuffer::Framebuffer;
 use crate::render::{create_model_matrix, create_perspective_matrix, create_view_matrix, create_viewport_matrix, render,render_with_shader, Uniforms};
 use crate::color::Color;
-use crate::shader::{sun_shader};
+use crate::shader::{sun_shader, urano_shader};
 
 pub fn start() {
     let window_width = 800;
-    let window_height = 600;
+    let window_height = 800;
     let framebuffer_width =  window_width;
     let framebuffer_height = window_height;
     
@@ -44,7 +44,7 @@ pub fn start() {
     
     let translation = Vec3::new(0.0, 0.0, 0.0);
     let rotation = Vec3::new(0.0, 0.0, 0.0);
-    let scale = 2.0 as f32;
+    let scale = 2.0f32;
     
     let obj = Obj::load_custom_obj("src/3D/sphere.obj").expect("Failed to load obj");
     let vertex_array = obj.get_vertex_array();
@@ -72,9 +72,9 @@ pub fn start() {
             viewport_matrix,
         };
 
-        framebuffer.set_current_color_hex(0xFFFFFF);
+        framebuffer.set_background_color(Color::new(255,255,255));
         framebuffer.clear();
-        render_with_shader(&mut framebuffer, &uniforms, &vertex_array, sun_shader);
+        render_with_shader(&mut framebuffer, &uniforms, &vertex_array, urano_shader);
         window
             .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
             .unwrap();

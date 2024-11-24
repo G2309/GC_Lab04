@@ -54,7 +54,7 @@ impl Obj {
                     .cloned()
                     .unwrap_or(Vec2::new(0.0, 0.0));
 
-                vertices.push(Vertex::new_with_color(position, normal, tex_coords, Color::new(255, 255, 255)));
+                vertices.push(Vertex::new(position, normal, tex_coords));
             }
         }
 
