@@ -36,7 +36,7 @@ pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (
       4 => rocky_planet_shader(fragment, uniforms, time),
       5 => ratchet_shader(fragment, uniforms, time as f32),
       6 => ratchet1_shader(fragment, uniforms, time),
-      7 => sun_shader(),
+      7 => sun_shader(time),
       8 => simple_planet_shader(fragment, uniforms),
       _ => (Color::new(0, 0, 0), 0),
   }
@@ -285,11 +285,30 @@ pub fn ratchet1_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (
   (lit_color, 0)
 }
 
-pub fn sun_shader() -> (Color, u32) {
-  let base_color = Color::from_float(1.0, 0.9, 0.5);
-  let emission = 100;
+pub fn sun_shader(time: u32) -> (Color, u32) {
+    // Base color del Sol
+    let base_color = Color::from_float(1.0, 0.8, 0.3);
 
-  (base_color, emission)
+    // Factores de ruido para las tormentas solares
+    let frequency = 0.03; // Frecuencia de las variaciones
+    let noise_r = ((time as f32 * frequency).sin() * 0.5 + 0.5) * 0.3; // Variación en rojo
+    let noise_g = ((time as f32 * frequency * 1.3).cos() * 0.5 + 0.5) * 0.2; // Variación en verde
+    let noise_b = ((time as f32 * frequency * 1.7).sin() * 0.5 + 0.5) * 0.1; // Variación en azul
+
+    // Patrón dinámico: alterna entre tonos cálidos (amarillos y naranjas)
+    let r = (base_color.r as f32 / 255.0 + noise_r).min(1.0);
+    let g = (base_color.g as f32 / 255.0 + noise_g).min(1.0);
+    let b = (base_color.b as f32 / 255.0 + noise_b).min(1.0);
+
+    // Intensidad de emisión ajustada para simular destellos de tormentas solares
+    let emission_base = 150;
+    let emission_variation = (50.0 * ((time as f32 * 0.02).cos() * 0.5 + 0.5)) as u32;
+    let emission = emission_base + emission_variation;
+
+    // Crear el color final
+    let dynamic_color = Color::from_float(r, g, b);
+
+    (dynamic_color, emission)
 }
 
 pub fn moon_shader(fragment: &Fragment, uniforms: &Uniforms) -> (Color, u32) {

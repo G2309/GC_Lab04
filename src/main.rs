@@ -148,12 +148,6 @@ pub fn start() {
             uniforms.current_shader = 7;
             uniforms.model_matrix = create_model_matrix(translation, scale, rotation);
             render(&mut framebuffer, &uniforms, &vertex_array, time as u32);
-            let kernel_size = 40;
-            let sigma = 2.5; 
-            gaussian_blur(&mut framebuffer.emissive_buffer, framebuffer.width, framebuffer.height, kernel_size, sigma);
-            
-            // Aplicar Bloom
-            apply_bloom(&mut framebuffer.buffer, &framebuffer.emissive_buffer, framebuffer.width, framebuffer.height);
         } else if current_shader == 8 {
             uniforms.current_shader = 8;
             uniforms.model_matrix = create_model_matrix(translation, scale * 2.0, rotation);
