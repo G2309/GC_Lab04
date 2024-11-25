@@ -1,4 +1,4 @@
-use nalgebra_glm::{Vec3, Vec4, dot, normalize, smoothstep};
+use nalgebra_glm::{Vec2,Vec3, Vec4, dot, normalize, smoothstep};
 use crate::vertex::Vertex;
 use crate::render::Uniforms;
 use crate::color::Color;
@@ -32,14 +32,145 @@ pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (
   match uniforms.current_shader {
       1 => kenshi_shader(fragment, uniforms, time),
       2 => moon_shader(fragment, uniforms),
-      5 => ratchet_shader(fragment, uniforms),
-      6 => urano_shader(fragment, uniforms, time),
+      3 => ratchet_toxic_shader(fragment, uniforms, time),
+      4 => rocky_planet_shader(fragment, uniforms, time),
+      5 => ratchet_shader(fragment, uniforms, time as f32),
+      6 => ratchet1_shader(fragment, uniforms, time),
       7 => sun_shader(),
+      8 => simple_planet_shader(fragment, uniforms),
       _ => (Color::new(0, 0, 0), 0),
   }
 }
 
-pub fn ratchet_shader(fragment: &Fragment, uniforms: &Uniforms) -> (Color, u32) {
+pub fn simple_planet_shader(fragment: &Fragment, uniforms: &Uniforms) -> (Color, u32) {
+    let (base_color, detail_color) = match uniforms.current_shader {
+        1 => (Color::from_float(0.6, 0.4, 0.2), Color::from_float(0.4, 0.3, 0.1)), 
+        2 => (Color::from_float(0.2, 0.6, 0.3), Color::from_float(0.1, 0.4, 0.2)),
+        3 => (Color::from_float(0.2, 0.3, 0.6), Color::from_float(0.1, 0.2, 0.5)),
+        _ => (Color::from_float(0.8, 0.8, 0.8), Color::from_float(0.5, 0.5, 0.5)), 
+    };
+
+    let noise_value = uniforms.noise.get_noise_2d(
+        fragment.vertex_position.x * 50.0, 
+        fragment.vertex_position.y * 50.0
+    );
+    let normalized_noise = (noise_value + 1.0) * 0.5; 
+
+    let surface_color = base_color.lerp(&detail_color, normalized_noise.clamp(0.0, 1.0));
+
+    let light_position = Vec3::new(5.0, 5.0, 5.0); 
+    let light_direction = (light_position - fragment.vertex_position).normalize(); 
+    let normal = fragment.normal.normalize(); // Normal del fragmento
+    let diffuse = normal.dot(&light_direction).max(0.0); // Cálculo de iluminación difusa
+
+    (surface_color * (0.3 + 0.7 * diffuse), 0)
+}
+
+fn rocky_planet_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (Color, u32) {
+    let x = fragment.vertex_position.x;
+    let y = fragment.vertex_position.y;
+    let t = time as f32 * 0.1;
+
+    let base_noise_value = uniforms.noise.get_noise_2d(x, y);
+    let rock_noise_value = uniforms.noise.get_noise_3d(x - t, x+y -t, y );
+
+    let rocky_color_1 = Color::from_float(0.6, 0.5, 0.4); // Color principal rocoso
+    let rocky_color_2 = Color::from_float(0.4, 0.3, 0.2); // Color de zonas más oscuras y rocosas
+    let rocky_color_3 = Color::from_float(0.2, 0.1, 0.05); // Color de las zonas más áridas y secas
+
+    let land_threshold = 0.4;
+
+    let base_color = if base_noise_value > land_threshold {
+        let rock_intensity = (base_noise_value - land_threshold) / (1.0 - land_threshold);
+        if rock_intensity < 0.5 {
+            rocky_color_1.lerp(&rocky_color_2, rock_intensity * 2.0)
+        } else {
+            rocky_color_2.lerp(&rocky_color_3, (rock_intensity - 0.5) * 2.0)
+        }
+    } else {
+        rocky_color_1.lerp(&rocky_color_2, base_noise_value / land_threshold)
+    };
+
+    // Calculamos la iluminación basada en la posición de la luz
+    let light_position = Vec3::new(1.0, 1.0, 3.0); // Posición de la fuente de luz
+    let light_dir = normalize(&(light_position - fragment.vertex_position)); // Dirección de la luz
+    let normal = normalize(&fragment.normal); // Normal del fragmento para iluminación
+    let diffuse = dot(&normal, &light_dir).max(0.0); // Cálculo de la iluminación difusa
+
+    let lit_color = base_color * (0.1 + 0.9 * diffuse);
+
+    let dust_threshold = 0.3; 
+    let dust_opacity = 0.2 + 0.1 * ((time as f32 / 500.0) * 0.5).sin().abs(); 
+    if rock_noise_value > dust_threshold {
+        let dust_intensity = ((rock_noise_value - dust_threshold) / (1.0 - dust_threshold)).clamp(0.0, 1.0);
+        (lit_color.blend_add(&(rocky_color_3 * (dust_intensity * dust_opacity))), 0)
+    } else {
+        (lit_color, 0)
+    }
+}
+
+
+pub fn ratchet_toxic_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (Color, u32) {
+    let zoom = 100.0;  
+    let ox = 100.0; 
+    let oy = 100.0;
+    let x = fragment.vertex_position.x;
+    let y = fragment.vertex_position.y;
+    let t = time as f32 * 0.1;
+
+    // Base noise para la tierra
+    let base_noise_value = uniforms.noise.get_noise_2d(x * x, y);
+    
+    // Movimiento en la atmósfera
+    let offset_x = t * 0.1; 
+    let offset_y = t * 0.05; 
+    let cloud_noise_value = uniforms.cloud_noise.get_noise_2d(
+        (x * zoom + ox + t + offset_x), 
+        (y * zoom + oy + offset_y + t)
+    );
+
+    let land_color_1 = Color::from_float(0.1, 0.3, 0.0); // Verde tóxico 1
+    let land_color_2 = Color::from_float(0.2, 0.5, 0.1); // Verde tóxico 2
+
+    let cloud_color = Color::from_float(0.9, 0.6, 0.2); // Naranja para la atmósfera
+    let atmosphere_color = Color::from_float(0.1, 0.4, 0.3); // Verde azulado para otra capa de atmósfera
+
+    let land_threshold = 0.3;
+
+    let base_color = if base_noise_value > land_threshold {
+        let land_intensity = (base_noise_value - land_threshold) / (1.0 - land_threshold);
+        if land_intensity < 0.5 {
+            land_color_1.lerp(&land_color_2, land_intensity * 2.0)
+        } else {
+            land_color_2.lerp(&land_color_1, (land_intensity - 0.5) * 2.0)
+        }
+    } else {
+        land_color_1.lerp(&land_color_2, base_noise_value / land_threshold)
+    };
+
+    let light_position = Vec3::new(1.0, 1.0, 3.0); 
+    let light_dir = normalize(&(light_position - fragment.vertex_position));
+    let normal = normalize(&fragment.normal); 
+    let diffuse = dot(&normal, &light_dir).max(0.0);
+
+    let lit_color = base_color * (0.1 + 0.9 * diffuse); 
+
+    let cloud_threshold = 0.25; 
+    let cloud_opacity = 0.3 + 0.2 * ((time as f32 / 1000.0) * 0.3).sin().abs(); 
+    
+    if cloud_noise_value > cloud_threshold {
+        let cloud_intensity = ((cloud_noise_value - cloud_threshold) / (1.0 - cloud_threshold)).clamp(0.0, 1.0);
+        let cloud_layer = cloud_color * (cloud_intensity * cloud_opacity);
+        let atmosphere_intensity = (cloud_noise_value * 0.5).clamp(0.0, 1.0);
+        let atmosphere_layer = atmosphere_color * atmosphere_intensity;
+        (lit_color.blend_add(&cloud_layer).blend_add(&atmosphere_layer), 0)
+    } else {
+        (lit_color, 0)
+    }
+}
+
+
+pub fn ratchet_shader(fragment: &Fragment, uniforms: &Uniforms, time: f32) -> (Color, u32) {
     // Capa 1: Bandas horizontales difuminadas
     let latitude = fragment.vertex_position.y;
     let band_frequency = 8.0;
@@ -50,7 +181,10 @@ pub fn ratchet_shader(fragment: &Fragment, uniforms: &Uniforms) -> (Color, u32) 
         fragment.vertex_position.y * 2.5,
     );
     let band_noise_intensity = 0.25;
-    let distorted_latitude = latitude + band_noise * band_noise_intensity;
+
+    let band_speed = 0.02; // Velocidad de desplazamiento de las bandas
+    let time_offset = time * band_speed; // Desplazamiento en función del tiempo
+    let distorted_latitude = latitude + band_noise * band_noise_intensity + time_offset;
     let band_pattern = (distorted_latitude * band_frequency).sin();
 
     // Paleta de colores morados
@@ -93,9 +227,9 @@ pub fn ratchet_shader(fragment: &Fragment, uniforms: &Uniforms) -> (Color, u32) 
         .lerp(&light_lavender, (variation_noise.abs() * 0.3).clamp(0.0, 1.0));
 
     // Capa 3: Mancha Morada Difuminada
-    // Aquí eliminamos el uso de UV, y usamos la posición del vértice para calcular la mancha.
-    let spot_center = Vec3::new(0.6, 0.4, 0.0); // Consideramos un centro de mancha arbitrario
-    let distance_to_spot = (fragment.vertex_position - spot_center).norm();
+    // No usamos uv, en lugar de eso calculamos la "distancia" desde un centro con las coordenadas del vértice.
+    let spot_center = Vec2::new(0.6, 0.4);
+    let distance_to_spot = (fragment.vertex_position.xy() - spot_center).norm();
 
     let spot_noise_value = uniforms.noise.get_noise_2d(
         fragment.vertex_position.x * 18.0,
@@ -128,7 +262,8 @@ pub fn ratchet_shader(fragment: &Fragment, uniforms: &Uniforms) -> (Color, u32) 
     (color_with_lighting, 0)
 }
 
-pub fn urano_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (Color, u32) {
+
+pub fn ratchet1_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (Color, u32) {
   let x = fragment.vertex_position.x;
   let y = fragment.vertex_position.y;
   let z = fragment.vertex_position.z;
@@ -136,7 +271,7 @@ pub fn urano_shader(fragment: &Fragment, uniforms: &Uniforms, time: u32) -> (Col
 
   let noise_value = uniforms.noise.get_noise_3d(x, y + t, z);
 
-  let base_color = Color::from_float(0.2, 0.5, 0.9);
+  let base_color = Color::from_float(0.9, 0.3, 0.9);
 
   let intensity = (noise_value * 0.5 + 0.5).clamp(0.0, 1.0);
   let varied_color = base_color * intensity;

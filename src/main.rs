@@ -54,8 +54,11 @@ pub fn start() {
     let mut time = 0;
     let mut current_shader = 1;
     let mut current_noise = (
+        create_noise(0),
         create_noise(1),
-        create_noise(2),
+        create_noise(3),
+        create_noise(4),
+        create_noise(5),
         create_noise(6),
         create_noise(7),
     );
@@ -74,9 +77,13 @@ pub fn start() {
         let keys = window.get_keys_pressed(minifb::KeyRepeat::No);
         for key in keys {
             match key {
-                Key::Key1 => {current_shader = 1; current_noise.0 = create_noise(8)},
-                Key::Key6 => {current_shader = 6; current_noise.1 = create_noise(6)},
-                Key::Key7 => {current_shader = 7; current_noise.2 = create_noise(9)},
+                Key::Key1 => {current_shader = 1; current_noise.0 = create_noise(1)},
+                Key::Key2 => {current_shader = 3; current_noise.1 = create_noise(2)},
+                Key::Key3 => {current_shader = 4; current_noise.2 = create_noise(3)},
+                Key::Key4 => {current_shader = 8; current_noise.3 = create_noise(4)},
+                Key::Key5 => {current_shader = 5; current_noise.4 = create_noise(5)},
+                Key::Key6 => {current_shader = 6; current_noise.5 = create_noise(6)},
+                Key::Key7 => {current_shader = 7; current_noise.6 = create_noise(7)},
                 _ => {}
             }
         }
@@ -121,18 +128,36 @@ pub fn start() {
             render(&mut framebuffer, &uniforms, &vertex_array, time);
             uniforms.model_matrix = create_model_matrix(moon_translation, 0.5, Vec3::new(0.0, 0.0, 0.0));
             render(&mut framebuffer, &uniforms, &vertex_array, time);
+        } else if current_shader == 3 {
+            uniforms.current_shader = 3;
+            uniforms.model_matrix = create_model_matrix(translation, scale * 1.75, rotation);
+            render(&mut framebuffer, &uniforms, &vertex_array, time);
+        } else if current_shader == 4 {
+            uniforms.current_shader = 4;
+            uniforms.model_matrix = create_model_matrix(translation, scale * 2.0, rotation);
+            render(&mut framebuffer, &uniforms, &vertex_array, time);
+        } else if current_shader == 5 {
+            uniforms.current_shader = 5;
+            uniforms.model_matrix = create_model_matrix(translation, scale * 4.25, rotation);
+            render(&mut framebuffer, &uniforms, &vertex_array, time);
         } else if current_shader == 6 {
             uniforms.current_shader = 6;
-            uniforms.model_matrix = create_model_matrix(translation, scale, rotation);
-            render(&mut framebuffer, &uniforms, &vertex_array, time);
-            uniforms.model_matrix = create_model_matrix(translation, scale * 1.5, Vec3::new(0.0, 0.0, 0.0));
+            uniforms.model_matrix = create_model_matrix(translation, scale * 2.0 , rotation);
             render(&mut framebuffer, &uniforms, &vertex_array, time);
         } else if current_shader == 7 {
             uniforms.current_shader = 7;
             uniforms.model_matrix = create_model_matrix(translation, scale, rotation);
-            render(&mut framebuffer, &uniforms, &vertex_array, time);
-            gaussian_blur(&mut framebuffer.emissive_buffer, framebuffer.width, framebuffer.height, 30, 4.5);
+            render(&mut framebuffer, &uniforms, &vertex_array, time as u32);
+            let kernel_size = 40;
+            let sigma = 2.5; 
+            gaussian_blur(&mut framebuffer.emissive_buffer, framebuffer.width, framebuffer.height, kernel_size, sigma);
+            
+            // Aplicar Bloom
             apply_bloom(&mut framebuffer.buffer, &framebuffer.emissive_buffer, framebuffer.width, framebuffer.height);
+        } else if current_shader == 8 {
+            uniforms.current_shader = 8;
+            uniforms.model_matrix = create_model_matrix(translation, scale * 2.0, rotation);
+            render(&mut framebuffer, &uniforms, &vertex_array, time);
         }
 
         time += 1;

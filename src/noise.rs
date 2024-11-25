@@ -3,11 +3,11 @@ use fastnoise_lite::{FastNoiseLite, NoiseType, FractalType};
 pub fn create_noise(current_shader: u8) -> FastNoiseLite {
     match current_shader {
         1 => create_kenshi_noise(),
-        2 => create_mars_noise(),
-        3 => create_mercury_noise(),
+        2 => create_ratchet_t_noise(),
+        3 => create_rocky_noise(),
         4 => FastNoiseLite::new(),
-        5 => create_jupiter_noise(),
-        6 => create_urano_noise(), 
+        5 => create_ratchet_noise(),
+        6 => create_simple_noise(), 
         8 => create_moon_noise(),
         9 => FastNoiseLite::new(),
         _ => create_kenshi_noise(),  
@@ -35,14 +35,14 @@ fn create_kenshi_noise() -> FastNoiseLite {
     noise
 }
 
-fn create_mars_noise() -> FastNoiseLite {
-    let mut noise = FastNoiseLite::with_seed(1234);
+fn create_ratchet_t_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(3344);
     noise.set_noise_type(Some(NoiseType::Perlin));
     noise.set_fractal_type(Some(FractalType::Ridged));
-    noise.set_fractal_octaves(Some(4));
-    noise.set_fractal_lacunarity(Some(2.0));
-    noise.set_fractal_gain(Some(0.5));
-    noise.set_frequency(Some(1.5));
+    noise.set_fractal_octaves(Some(8));
+    noise.set_fractal_lacunarity(Some(3.0));
+    noise.set_fractal_gain(Some(0.7));
+    noise.set_frequency(Some(1.8));
     noise
 }
 
@@ -57,7 +57,7 @@ pub fn create_moon_noise() -> FastNoiseLite {
     noise
 }
 
-fn create_mercury_noise() -> FastNoiseLite {
+fn create_rocky_noise() -> FastNoiseLite {
     let mut noise = FastNoiseLite::with_seed(4321);
     noise.set_noise_type(Some(NoiseType::Perlin));
     noise.set_fractal_type(Some(FractalType::PingPong));
@@ -68,8 +68,8 @@ fn create_mercury_noise() -> FastNoiseLite {
     noise
 }
 
-fn create_jupiter_noise() -> FastNoiseLite {
-    let mut noise = FastNoiseLite::with_seed(5678);
+fn create_ratchet_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(9876);
     noise.set_noise_type(Some(NoiseType::OpenSimplex2));
     noise.set_fractal_type(Some(FractalType::DomainWarpProgressive));
     noise.set_fractal_octaves(Some(6));
@@ -79,7 +79,7 @@ fn create_jupiter_noise() -> FastNoiseLite {
     noise
 }
 
-fn create_urano_noise() -> FastNoiseLite {
+fn create_simple_noise() -> FastNoiseLite {
     let mut noise = FastNoiseLite::with_seed(2021);
     noise.set_noise_type(Some(NoiseType::OpenSimplex2));
     noise.set_fractal_type(Some(FractalType::Ridged));
